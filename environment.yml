@@ -1,0 +1,11 @@
+# Conda environment for the EM Theory I FEniCS examples.
+# Create it with:   conda env create -f environment.yml
+# Activate it with: conda activate fenicsproject
+name: fenicsproject
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - fenics=2019.1.0     # legacy FEniCS (dolfin), NOT FEniCSx/dolfinx
+  - numpy
+  - matplotlib          # plots and the animation
