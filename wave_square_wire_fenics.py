@@ -1,13 +1,19 @@
 """
-wave_current_fenics.py  --  Radiation from an oscillating current in 2D
-=======================================================================
+wave_square_wire_fenics.py  --  Radiation from an oscillating current in a SQUARE wire
+=====================================================================================
 
 A tutorial on solving a time-dependent PDE with the finite element method,
 using FEniCS (legacy dolfin 2019.1).
 
+This is the square-wire companion of wave_current_fenics.py, which treats a
+round wire.  Only the shape of the wire (and, to go with it, the shape of the
+computational domain) is different; the physics and the time stepping are the
+same.  Compare the two animations: close to the wire the square shape is
+visible in A3, but a few wavelengths away the waves become circular again.
+
 The physics
 -----------
-A long straight wire along the z axis carries a current that oscillates in
+A long straight wire of square cross-section, along the z axis, carries a current that oscillates in
 time.  In the Lorenz gauge (Gaussian units) the vector potential obeys the
 inhomogeneous wave equation
 
@@ -18,20 +24,22 @@ and the problem is two-dimensional.  We write A3 = A_z and take the current
 density J_z = -sin(omega*t) uniformly inside the wire (the minus sign only
 flips the overall sign of A3).  The problem we solve is then
 
-    (1/c^2) d^2A3/dt^2 - laplacian(A3) = -(4*pi/c) * sin(omega*t)   inside the wire  (r < R_wire)
-    (1/c^2) d^2A3/dt^2 - laplacian(A3) = 0                           in vacuum        (R_wire < r < R_max)
-    A3 = 0                                                           on the outer circle r = R_max
+    (1/c^2) d^2A3/dt^2 - laplacian(A3) = -(4*pi/c) * sin(omega*t)   inside the wire  (|x| < a_wire and |y| < a_wire)
+    (1/c^2) d^2A3/dt^2 - laplacian(A3) = 0                           in vacuum        (the rest of the box)
+    A3 = 0                                                           on the edge of the box |x| = L_box or |y| = L_box
     A3 = 0  and  dA3/dt = 0                                           at t = 0
 
-The wire sends out cylindrical waves of wavelength  lambda = 2*pi*c/omega.
-Space is infinite, but a computer can only handle a finite region, so we cut
-it off at r = R_max and put A3 = 0 there.  Waves travel at speed c, so as long
-as c*T_end < R_max nothing reaches the edge and the cut-off does no harm.
+Here a_wire is HALF the side of the square wire and L_box is half the side of
+the square computational box.  The wire sends out waves of wavelength
+lambda = 2*pi*c/omega.  Space is infinite, but a computer can only handle a
+finite region, so we cut it off at the edge of the box and put A3 = 0 there.
+Waves travel at speed c, so as long as a_wire + c*T_end < L_box nothing
+reaches the edge and the cut-off does no harm.
 The magnetic field follows from B = curl A.
 
 The numerical method, in one paragraph
 --------------------------------------
-Space: the disc is covered by a mesh of triangles and A3 is approximated by a
+Space: the box is covered by a mesh of triangles and A3 is approximated by a
 function that is a polynomial on each triangle (the finite element method).
 Time: we step forward with a fixed time step dt; at every step one linear
 system  M * A3_new = b  is solved.  Each section below explains its part.
@@ -42,9 +50,9 @@ want to change are collected in section 1.
 How to run (see INSTALL.md for setting up the environment):
 
     conda activate fenicsproject
-    python wave_current_fenics.py
+    python wave_square_wire_fenics.py
 
-Output (in the folder "results/"):
+Output (in the folder "results_square/"; the round-wire script uses "results/"):
     faces.pvd, wave.pvd, B_final.pvd  -- open with ParaView
     frames/frame_XXX.png, wave.gif    -- the animation
 """
@@ -65,8 +73,8 @@ set_log_level(LogLevel.WARNING)   # hide FEniCS's "Calling FFC just-in-time comp
 # 1. Parameters -- every knob of the simulation lives here
 # ---------------------------------------------------------------------------
 # Physics
-R_max   = 20.0   # radius of the computational domain (vacuum around the wire)
-R_wire  = 1.0    # radius of the wire that carries the current
+L_box   = 20.0   # half the side of the square computational domain (vacuum around the wire)
+a_wire  = 1.0    # half the side of the square wire that carries the current
 c       = 1.0    # speed of light
 omega   = 1.0    # angular frequency of the current
 
@@ -75,7 +83,7 @@ n_periods = 2    # how many periods of the current to simulate
 n_frames  = 50   # how many snapshots of A3 to save and animate (including t = 0)
 
 # Discretisation
-h_target = 0.5   # target size of the mesh triangles; should be well below the wavelength
+h_target = 0.5   # target spacing of the mesh grid; should be well below the wavelength
 n_refine = 2     # extra mesh refinements around the wire (0 = none), see section 2
 degree   = 1     # polynomial degree of the finite elements: 1 = linear (fast),
                  # 2 = quadratic (more accurate, ~4x slower)
@@ -83,7 +91,7 @@ steps_per_frame = 10        # time steps between two saved snapshots; more steps
 
 # Output
 surface_plot    = True      # True: 3D surface plot A3(x, y), False: flat 2D colour map
-out_dir         = "results" # where all output files go
+out_dir         = "results_square" # where all output files go
 
 # Quantities derived from the parameters above
 T_period = 2 * np.pi / omega                 # period of the current
@@ -94,33 +102,44 @@ dt       = T_end / n_steps                   # ... and the resulting time step
 os.makedirs(out_dir, exist_ok=True)
 print("Wavelength           = %.3f" % (2 * np.pi * c / omega))
 print("Final time           = %.3f  (%d periods)" % (T_end, n_periods))
-print("Wave front at t_end  = %.3f  (domain radius %.1f)" % (c * T_end, R_max))
+print("Wave front at t_end  = %.3f  (distance from wire to box edge %.1f)" % (c * T_end, L_box - a_wire))
 print("Time step            = %.4f  (%d steps, %d frames)" % (dt, n_steps, n_frames))
 
 
 # ---------------------------------------------------------------------------
 # 2. Geometry and mesh
 # ---------------------------------------------------------------------------
-# The domain is a disc of radius R_max.  FEniCS itself has no tool that meshes
-# arbitrary shapes (that is the job of the optional package "mshr", which is
-# not available on every computer).  Instead we take the built-in mesh of the
-# UNIT disc and stretch it to radius R_max.  UnitDiscMesh consists of
-# "n_rings" concentric rings of triangles and its largest triangle has size
-# about 1.43 / n_rings.  We therefore pick n_rings so that, after stretching
-# by R_max, the triangles have size h_target.
-n_rings = int(round(1.43 * R_max / h_target))
-mesh = UnitDiscMesh.create(MPI.comm_world, n_rings, 1, 2)   # arguments: (communicator, rings, degree, dimension)
-mesh.coordinates()[:] = R_max * mesh.coordinates()          # multiply every vertex (x, y) by R_max
+# The domain is the square box  -L_box < x, y < L_box.  FEniCS builds such a
+# mesh itself: RectangleMesh cuts the box into n_grid x n_grid small squares
+# and splits every square into triangles.  With the option "crossed" each
+# square is split by both diagonals into 4 triangles, which makes the mesh look
+# the same in all directions (the waves then travel equally well along x, y and
+# the diagonals).
+#
+# The wire's edges x = +-a_wire and y = +-a_wire are straight lines.  If they
+# coincide with grid lines, then no triangle is cut by the wire's surface and
+# every triangle is either completely inside or completely outside the wire.
+# The wire is then represented EXACTLY (compare with the round wire, where
+# the triangle edges can only approximate the circle).  To achieve this the
+# grid spacing h must fit a whole number of times into a_wire and into L_box.
+n_wire = max(1, int(round(a_wire / h_target)))   # grid cells from the centre to the wire's edge
+h = a_wire / n_wire                              # the actual grid spacing, close to h_target
+n_grid = int(round(2 * L_box / h))               # grid cells across the whole box
+if abs(n_grid * h - 2 * L_box) > 1e-9 * L_box:
+    raise ValueError("The grid spacing h = %.4f does not fit into the box: choose L_box as a "
+                     "multiple of h (for example a multiple of a_wire)." % h)
+mesh = RectangleMesh(Point(-L_box, -L_box), Point(L_box, L_box), n_grid, n_grid, "crossed")
 
-# The wire is small compared with the domain, and the triangle edges do not
-# follow its boundary r = R_wire (section 3 decides "wire or vacuum" triangle
-# by triangle).  Smaller triangles near the wire make the labelled wire a
-# better circle and resolve the source better.  Each refinement splits every
-# marked triangle into 4 smaller ones.
+# The wire is small compared with the domain.  Smaller triangles near the
+# wire resolve the source and the strong bending of A3 at the wire's corners
+# better.  Each refinement splits every marked triangle into 4 smaller ones by
+# cutting its edges in half; the old edges stay (in halves), so the wire's
+# edges remain lines of the mesh.
 for k in range(n_refine):
     cell_markers = MeshFunction("bool", mesh, 2, False)     # one True/False flag per triangle ("cell")
     for cell in cells(mesh):
-        if cell.midpoint().norm() < 2.0 * R_wire:            # triangle centre closer than 2 R_wire to the origin
+        p = cell.midpoint()                                   # centre of the triangle
+        if abs(p.x()) < 2.0 * a_wire and abs(p.y()) < 2.0 * a_wire:   # inside a square twice the wire's size
             cell_markers[cell] = True
     mesh = refine(mesh, cell_markers)
 
@@ -133,19 +152,22 @@ print("Mesh: %d vertices, %d triangles, largest triangle h = %.3f, smallest h = 
 # ---------------------------------------------------------------------------
 # The source acts only inside the wire, so we must know which triangles belong
 # to it.  Give every triangle a label: 1 = vacuum, 2 = wire.  A triangle counts
-# as "wire" if its centre lies inside r < R_wire.
+# as "wire" if its centre lies inside the square |x| < a_wire, |y| < a_wire.
+# (Since the wire's edges are mesh lines, the centre decides unambiguously.)
 faces = MeshFunction("size_t", mesh, 2, 1)                  # start with label 1 everywhere
 for cell in cells(mesh):
-    if cell.midpoint().norm() < R_wire:                      # triangle centre is inside the wire
+    p = cell.midpoint()                                      # centre of the triangle
+    if abs(p.x()) < a_wire and abs(p.y()) < a_wire:          # ... is inside the wire
         faces[cell] = 2
 
 # Attach the labels to the integration measure: from now on
 #   dx(1) = integral over the vacuum,  dx(2) = integral over the wire,  dx = over everything.
 dx = Measure("dx", domain=mesh, subdomain_data=faces)
 
-# Sanity check: the labelled wire should have area pi*R_wire^2.
+# Sanity check: the labelled wire should have area (2*a_wire)^2, and here
+# the agreement is exact up to rounding errors.
 wire_area = assemble(Constant(1.0) * dx(2))
-print("Wire area from mesh  = %.4f  (exact: %.4f)" % (wire_area, np.pi * R_wire**2))
+print("Wire area from mesh  = %.4f  (exact: %.4f)" % (wire_area, (2 * a_wire)**2))
 
 # Save the labels so you can look at the two regions in ParaView.
 File(out_dir + "/faces.pvd") << faces
@@ -196,9 +218,9 @@ L = (1.0 / (c * dt)**2) * (2 * A3_now - A3_old) * v * dx \
 # ---------------------------------------------------------------------------
 # 5. Boundary condition
 # ---------------------------------------------------------------------------
-# A3 = 0 on the boundary of the mesh, which is the outer circle r = R_max.
+# A3 = 0 on the boundary of the mesh, which is the edge of the box.
 # "on_boundary" is FEniCS shorthand for "every point on the edge of the mesh".
-# The wire's surface r = R_wire is inside the domain, not on its edge: there
+# The wire's surface is inside the domain, not on its edge: there
 # A3 and its derivative are simply continuous, which the weak form takes care of.
 bc = DirichletBC(V, Constant(0.0), "on_boundary")
 
@@ -236,7 +258,7 @@ frame = 1
 for step in range(1, n_steps + 1):
     f.t = t                                # source at the current time (centre of the stencil)
     b = assemble(L)                        # right-hand side vector
-    bc.apply(b)                            # enforce A3 = 0 on the outer circle
+    bc.apply(b)                            # enforce A3 = 0 on the edge of the box
     solve(M, A3_new.vector(), b)           # linear solve for the new time level
     A3_old.assign(A3_now)                  # shift the time levels:  old <- now
     A3_now.assign(A3_new)                  #                         now <- new
@@ -294,19 +316,20 @@ blue_white_yellow = matplotlib.colors.LinearSegmentedColormap.from_list(
 os.makedirs(out_dir + "/frames", exist_ok=True)
 
 # The wire itself, so you can see where the current (the source) sits.
-# In the 3D plot we draw it as a see-through cylinder of radius R_wire made of
-# grid lines, standing upright and spanning the whole A3 range.
-# In the 2D plot it is simply a circle of radius R_wire.
+# In the 3D plot we draw it as a see-through square column made of grid lines,
+# standing upright and spanning the whole A3 range.
+# In the 2D plot it is simply the outline of the square.
 wire_colour = "red"
-phi = np.linspace(0, 2 * np.pi, 25)                   # angle around the wire
-wire_x = R_wire * np.cos(phi)                         # points on the circle r = R_wire
-wire_y = R_wire * np.sin(phi)
+# Walk once around the square, starting and ending at the same corner.
+# Each side gets 5 points so the 3D column has vertical lines along the
+# sides, not only at the corners.
+side = np.linspace(-a_wire, a_wire, 5)
+wire_x = np.concatenate([side, np.full(5, a_wire), side[::-1], np.full(5, -a_wire)])
+wire_y = np.concatenate([np.full(5, -a_wire), side, np.full(5, a_wire), side[::-1]])
 if surface_plot:
-    wire_z = np.linspace(A3_min, A3_max, 6)           # heights of the horizontal rings
-    phi_grid, z_grid = np.meshgrid(phi, wire_z)       # 2D grid (angle, height) on the cylinder surface
-    cyl_x = R_wire * np.cos(phi_grid)
-    cyl_y = R_wire * np.sin(phi_grid)
-    cyl_z = z_grid
+    wire_z = np.linspace(A3_min, A3_max, 6)               # heights of the horizontal rings
+    col_x, col_z = np.meshgrid(wire_x, wire_z)            # 2D grid (position along the outline, height)
+    col_y, _ = np.meshgrid(wire_y, wire_z)
 
 frame_files = []
 for i in range(n_frames):
@@ -317,7 +340,7 @@ for i in range(n_frames):
         ax.plot_trisurf(x, y, A3_frames[:, i], triangles=triangles,
                         cmap=blue_white_yellow, vmin=-A3_colour_max, vmax=A3_colour_max,
                         linewidth=0, antialiased=False)
-        ax.plot_wireframe(cyl_x, cyl_y, cyl_z, color=wire_colour,   # the wire
+        ax.plot_wireframe(col_x, col_y, col_z, color=wire_colour,   # the wire
                           linewidth=0.8, rstride=1, cstride=2)
         ax.set_zlim(A3_min, A3_max)
         ax.set_zlabel("A3")
@@ -330,8 +353,8 @@ for i in range(n_frames):
         ax.plot(wire_x, wire_y, color=wire_colour, linewidth=1.5)  # outline of the wire
         fig.colorbar(colours, ax=ax, label="A3")
         ax.set_aspect("equal")
-    ax.set_xlim(-R_max, R_max)
-    ax.set_ylim(-R_max, R_max)
+    ax.set_xlim(-L_box, L_box)
+    ax.set_ylim(-L_box, L_box)
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.set_title("$A_3(x, y)$ t = %.2f" % t_frames[i])
