@@ -276,7 +276,37 @@ y = mesh.coordinates()[:, 1]
 triangles = np.asarray(mesh.cells(), dtype=int)      # ... and which 3 vertices form each triangle
 A3_min = A3_frames.min()                             # fixed colour / z range for all frames
 A3_max = A3_frames.max()
+# Colour scheme: negative A3 -> blue, A3 = 0 -> white, positive A3 -> yellow.
+# The colour range is made symmetric around zero so that white sits exactly at A3 = 0.
+A3_colour_max = max(abs(A3_min), abs(A3_max))
+# The colours reach full saturation quickly on both sides of zero, so only a
+# thin band around A3 = 0 is white and even small values are clearly coloured.
+# The white is made partly transparent; the opacity fades smoothly back to fully
+# opaque towards blue and gold.
+blue_white_yellow = matplotlib.colors.LinearSegmentedColormap.from_list(
+    "blue_white_yellow",
+    [(0.00, "darkblue"),     # most negative A3
+     (0.40, "blue"),
+     (0.50, (1, 1, 1, 0.3)), # A3 = 0: white, half transparent (red, green, blue, opacity)
+     (0.60, "gold"),
+     (1.00, "darkorange")])  # most positive A3
+
 os.makedirs(out_dir + "/frames", exist_ok=True)
+
+# The wire itself, so you can see where the current (the source) sits.
+# In the 3D plot we draw it as a see-through cylinder of radius R_wire made of
+# grid lines, standing upright and spanning the whole A3 range.
+# In the 2D plot it is simply a circle of radius R_wire.
+wire_colour = "red"
+phi = np.linspace(0, 2 * np.pi, 25)                   # angle around the wire
+wire_x = R_wire * np.cos(phi)                         # points on the circle r = R_wire
+wire_y = R_wire * np.sin(phi)
+if surface_plot:
+    wire_z = np.linspace(A3_min, A3_max, 6)           # heights of the horizontal rings
+    phi_grid, z_grid = np.meshgrid(phi, wire_z)       # 2D grid (angle, height) on the cylinder surface
+    cyl_x = R_wire * np.cos(phi_grid)
+    cyl_y = R_wire * np.sin(phi_grid)
+    cyl_z = z_grid
 
 frame_files = []
 for i in range(n_frames):
@@ -285,14 +315,19 @@ for i in range(n_frames):
         # 3D surface: height = A3(x, y)
         ax = fig.add_subplot(projection="3d")
         ax.plot_trisurf(x, y, A3_frames[:, i], triangles=triangles,
-                        cmap="viridis", vmin=A3_min, vmax=A3_max, linewidth=0, antialiased=False)
+                        cmap=blue_white_yellow, vmin=-A3_colour_max, vmax=A3_colour_max,
+                        linewidth=0, antialiased=False)
+        ax.plot_wireframe(cyl_x, cyl_y, cyl_z, color=wire_colour,   # the wire
+                          linewidth=0.8, rstride=1, cstride=2)
         ax.set_zlim(A3_min, A3_max)
         ax.set_zlabel("A3")
     else:
         # flat colour map: colour = A3(x, y)
         ax = fig.add_subplot()
         colours = ax.tripcolor(x, y, triangles, A3_frames[:, i],
-                               shading="gouraud", cmap="viridis", vmin=A3_min, vmax=A3_max)
+                               shading="gouraud", cmap=blue_white_yellow,
+                               vmin=-A3_colour_max, vmax=A3_colour_max)
+        ax.plot(wire_x, wire_y, color=wire_colour, linewidth=1.5)  # outline of the wire
         fig.colorbar(colours, ax=ax, label="A3")
         ax.set_aspect("equal")
     ax.set_xlim(-R_max, R_max)
