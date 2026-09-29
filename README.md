@@ -12,7 +12,8 @@ A3 = 0 on the outer circle,   A3 = dA3/dt = 0 at t = 0
 
 The script is a self-contained tutorial: read it from top to bottom, the
 comments explain the physics and every numerical step. Installation
-instructions are in [INSTALL.md](INSTALL.md).
+instructions are in [INSTALL.md](INSTALL.md). For a short introduction to
+the weak form used in section 4, see [WEAK_FORM.md](WEAK_FORM.md).
 
 ## Running
 

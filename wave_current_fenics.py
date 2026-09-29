@@ -341,8 +341,6 @@ for i in range(n_frames):
     frame_files.append(filename)
 
 # Glue the frames into an animated GIF, 10 frames per second (100 ms per frame).
-images = []
-for filename in frame_files:
-    images.append(Image.open(filename))
+images = [Image.open(filename) for filename in frame_files]
 images[0].save(out_dir + "/wave.gif", save_all=True, append_images=images[1:], duration=100, loop=0)
 print("Animation saved to %s/wave.gif" % out_dir)
