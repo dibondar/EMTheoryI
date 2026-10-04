@@ -88,10 +88,11 @@ Our actual equation is
 
 ```math
 \frac{1}{c^2} \frac{\partial^2 A_3}{\partial t^2} - \nabla^2 A_3 = -f(t) \, \chi_\text{wire}(x, y),
-\qquad f(t) = \frac{4\pi}{c} \sin \omega t ,
+\qquad f(t) = \frac{4\pi}{c} J_0 \sin \omega t ,
 ```
 
-where $\chi_\text{wire}$ is 1 inside the wire and 0 outside. Write
+where $\chi_\text{wire}$ is 1 inside the wire and 0 outside, and $J_0$ is the
+amplitude of the current density. Write
 $A_3^{n+1}, A_3^{n}, A_3^{n-1}$ for the solution at times $t + \Delta t,\ t,\ t - \Delta t$
 (`A3_new`, `A3_now`, `A3_old` in the code). Replace the time derivative by a
 central difference, and the Laplacian by a weighted average of the three time
@@ -139,11 +140,16 @@ FEniCS lets you type the weak form almost as written above:
 | $\nabla A_3 \cdot \nabla v$ | `dot(grad(A3), grad(v))` |
 
 ```python
-a = (1.0 / (c * dt)**2) * A3 * v * dx  +  0.25 * dot(grad(A3), grad(v)) * dx
-L = (1.0 / (c * dt)**2) * (2 * A3_now - A3_old) * v * dx \
+a = (1.0 / dt_sim**2) * A3 * v * dx  +  0.25 * dot(grad(A3), grad(v)) * dx
+L = (1.0 / dt_sim**2) * (2 * A3_now - A3_old) * v * dx \
     - 0.25 * dot(grad(2 * A3_now + A3_old), grad(v)) * dx \
     - f * v * dx(2)
 ```
+
+The code has no `c` and no `J0` in these lines. The script works in
+"simulation units" (section 1c of the script), in which lengths are measured
+in wire radii and times in `R_wire / c`. In these units $c = 1$ and $J_0 = 1$,
+so $1/(c\,\Delta t)^2$ becomes `1.0 / dt_sim**2` and $f(t) = 4\pi \sin(\omega t)$.
 
 `assemble(a)` turns `a` into the matrix $M$; `assemble(L)` turns `L` into the
 vector $b$. Choosing hats, computing integrals triangle by triangle and adding

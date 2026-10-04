@@ -2,7 +2,7 @@
 
 The examples in this course use **FEniCS 2019.1** (the "legacy" FEniCS, Python module `dolfin`).
 It is *not* the newer FEniCSx / `dolfinx`; the scripts will not run there.
-Plots need **matplotlib**. Everything is installed with conda, which takes about 10 minutes
+Plots need **matplotlib**, and physical units are handled by **pint**. Everything is installed with conda, which takes about 10 minutes
 and 2 GB of disk space.
 
 ## 1. What you need
@@ -34,18 +34,18 @@ build for Apple Silicon). The scripts build their meshes with functions that com
 conda env create -f environment.yml
 ```
 
-This creates an environment named `fenicsproject` with FEniCS, numpy and matplotlib.
+This creates an environment named `fenicsproject` with FEniCS, numpy, matplotlib and pint.
 
 **Option B (by hand).** The same, spelled out:
 
 ```bash
-conda create -n fenicsproject -c conda-forge python=3.11 fenics=2019.1.0 numpy matplotlib
+conda create -n fenicsproject -c conda-forge python=3.11 fenics=2019.1.0 numpy matplotlib pint
 ```
 
-**Already have a `fenicsproject` environment without matplotlib?** Add it:
+**Already have a `fenicsproject` environment without matplotlib or pint?** Add them:
 
 ```bash
-conda install -n fenicsproject -c conda-forge matplotlib
+conda install -n fenicsproject -c conda-forge matplotlib pint
 ```
 
 ## 3. Activate and check
@@ -60,7 +60,7 @@ conda activate fenicsproject
 Then check that everything imports:
 
 ```bash
-python -c "import dolfin, matplotlib; print('FEniCS', dolfin.__version__)"
+python -c "import dolfin, matplotlib, pint; print('FEniCS', dolfin.__version__)"
 ```
 
 Expected output: `FEniCS 2019.1.0`. The first import can take a minute because FEniCS compiles
@@ -113,7 +113,7 @@ VS Code activates the selected environment automatically, so the prompt should s
 Then run the check from section 3 in this terminal:
 
 ```bash
-python -c "import dolfin, matplotlib; print('FEniCS', dolfin.__version__)"
+python -c "import dolfin, matplotlib, pint; print('FEniCS', dolfin.__version__)"
 ```
 
 Terminals that were already open before you selected the environment are not updated:
@@ -152,7 +152,8 @@ Open the `.pvd` file, click "Apply", and use the play button to step through tim
 |---|---|
 | `conda: command not found` | Close and reopen the terminal after installing Miniconda. |
 | `ModuleNotFoundError: No module named 'dolfin'` | Run `conda activate fenicsproject` first. |
-| `ModuleNotFoundError: No module named 'matplotlib'` | See the end of section 2. |
+| `ModuleNotFoundError: No module named 'matplotlib'` or `'pint'` | See the end of section 2. |
+| `pint.errors.DimensionalityError` | A parameter has the wrong kind of unit, for example a frequency where a length is expected. The message names the two units that do not match. |
 | `OSError: pkg-config probably not installed` | The environment is not activated. Run `conda activate fenicsproject`. |
 | The run is too slow | Lower `n_refine`, increase `h_target`, or set `surface_plot = False` at the top of the script. |
 | FEniCS seems stuck "compiling" | Delete its cache with `rm -rf ~/.cache/dijitso ~/.cache/fenics` and run again. |

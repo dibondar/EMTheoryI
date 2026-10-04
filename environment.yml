@@ -9,3 +9,4 @@ dependencies:
   - fenics=2019.1.0     # legacy FEniCS (dolfin), NOT FEniCSx/dolfinx
   - numpy
   - matplotlib          # plots and the animation
+  - pint                # physical units (mm, GHz, ampere, ...)
