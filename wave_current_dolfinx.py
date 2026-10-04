@@ -58,6 +58,7 @@ How to run (see INSTALL.md):
     python wave_current_dolfinx.py
 
 Output (in the folder "results/"):
+    mesh.png                          -- picture of the mesh
     faces.pvd, wave.pvd, B_final.pvd  -- open with ParaView (simulation units;
                                          the script prints the conversion factors)
     frames/frame_XXX.png, wave.gif    -- the animation (physical units)
@@ -200,6 +201,28 @@ h_sim = mesh.h(2, np.arange(n_triangles))                     # size of every tr
 print(f"Mesh: {mesh.geometry.x.shape[0]} vertices, {n_triangles} triangles, "
       f"largest triangle h = {h_sim.max() * length_scale:.3f} {plot_length_unit}, "
       f"smallest h = {h_sim.min() * length_scale:.3f} {plot_length_unit}")
+
+# Picture of the mesh: the whole disc and a close-up of the wire (wire triangles in red).
+mesh_x = length_scale * mesh.geometry.x[:, 0]      # vertex coordinates
+mesh_y = length_scale * mesh.geometry.x[:, 1]
+mesh_triangles = mesh.geometry.dofmaps[0]          # the 3 vertices of each triangle
+wire_triangles = mesh_triangles[faces.find(2)]     # only the triangles labelled 2 = wire
+zoom = 5 * R_wire_sim * length_scale               # half-width of the close-up
+
+fig, (ax_all, ax_zoom) = plt.subplots(1, 2, figsize=(12, 6))
+for ax in (ax_all, ax_zoom):
+    ax.triplot(mesh_x, mesh_y, mesh_triangles, color="black", linewidth=0.2)
+    ax.triplot(mesh_x, mesh_y, wire_triangles, color="red", linewidth=0.4)
+    ax.set_aspect("equal")
+    ax.set_xlabel(f"x [{plot_length_unit}]")
+    ax.set_ylabel(f"y [{plot_length_unit}]")
+ax_zoom.set_xlim(-zoom, zoom)
+ax_zoom.set_ylim(-zoom, zoom)
+ax_all.set_title(f"Mesh: {n_triangles} triangles")
+ax_zoom.set_title("Close-up of the wire (red)")
+fig.savefig(out_dir + "/mesh.png", dpi=200)
+plt.close(fig)
+print(f"Mesh picture saved to {out_dir}/mesh.png")
 
 
 # ---------------------------------------------------------------------------
