@@ -1,6 +1,6 @@
 # The PDE in weak form: a short introduction
 
-This note explains section 4 of `wave_current_fenics.py`: how a differential
+This note explains section 4 of `wave_current_dolfinx.py`: how a differential
 equation is turned into something a computer can solve with the finite element
 method (FEM). Read it before or alongside the code.
 
@@ -127,22 +127,22 @@ M = \frac{1}{(c\,\Delta t)^2} \, \mathcal{M} + \frac14 K .
 It does not change in time, so the script builds it once. At every step only
 the right-hand side vector $b$ is rebuilt and $M a^{n+1} = b$ is solved.
 
-## 5. The same thing in FEniCS
+## 5. The same thing in DOLFINx
 
-FEniCS lets you type the weak form almost as written above:
+DOLFINx lets you type the weak form almost as written above:
 
 | Math | Code |
 |---|---|
-| unknown $A_3^{n+1}$ | `A3 = TrialFunction(V)` |
-| test function $v$ | `v = TestFunction(V)` |
+| unknown $A_3^{n+1}$ | `A3 = ufl.TrialFunction(V)` |
+| test function $v$ | `v = ufl.TestFunction(V)` |
 | $\int_\Omega \dots  dx$ | `* dx` |
 | $\int_\text{wire} \dots  dx$ | `* dx(2)` (triangles labelled 2) |
-| $\nabla A_3 \cdot \nabla v$ | `dot(grad(A3), grad(v))` |
+| $\nabla A_3 \cdot \nabla v$ | `ufl.dot(ufl.grad(A3), ufl.grad(v))` |
 
 ```python
-a = (1.0 / dt_sim**2) * A3 * v * dx  +  0.25 * dot(grad(A3), grad(v)) * dx
+a = (1.0 / dt_sim**2) * A3 * v * dx  +  0.25 * ufl.dot(ufl.grad(A3), ufl.grad(v)) * dx
 L = (1.0 / dt_sim**2) * (2 * A3_now - A3_old) * v * dx \
-    - 0.25 * dot(grad(2 * A3_now + A3_old), grad(v)) * dx \
+    - 0.25 * ufl.dot(ufl.grad(2 * A3_now + A3_old), ufl.grad(v)) * dx \
     - f * v * dx(2)
 ```
 
@@ -151,7 +151,7 @@ The code has no `c` and no `J0` in these lines. The script works in
 in wire radii and times in `R_wire / c`. In these units $c = 1$ and $J_0 = 1$,
 so $1/(c\,\Delta t)^2$ becomes `1.0 / dt_sim**2` and $f(t) = 4\pi \sin(\omega t)$.
 
-`assemble(a)` turns `a` into the matrix $M$; `assemble(L)` turns `L` into the
+`assemble_matrix` turns `a` into the matrix $M$; `assemble_vector` turns `L` into the
 vector $b$. Choosing hats, computing integrals triangle by triangle and adding
 them up is all done for you.
 

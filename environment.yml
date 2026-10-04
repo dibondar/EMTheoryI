@@ -1,12 +1,14 @@
-# Conda environment for the EM Theory I FEniCS examples.
+# Conda environment for the EM Theory I FEniCSx examples.
 # Create it with:   conda env create -f environment.yml
-# Activate it with: conda activate fenicsproject
-name: fenicsproject
+# Activate it with: conda activate fenicsx
+name: fenicsx
 channels:
   - conda-forge
 dependencies:
-  - python=3.11
-  - fenics=2019.1.0     # legacy FEniCS (dolfin), NOT FEniCSx/dolfinx
+  - python=3.12
+  - fenics-dolfinx=0.11 # FEniCSx (DOLFINx), the finite element library
+  - python-gmsh         # mesh generator
   - numpy
   - matplotlib          # plots and the animation
+  - pillow              # assembles the GIF
   - pint                # physical units (mm, GHz, ampere, ...)
