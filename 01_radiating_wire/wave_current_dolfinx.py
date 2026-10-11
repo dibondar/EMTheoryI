@@ -52,12 +52,12 @@ The numerical method
 Space: a mesh of triangles; A3 is a polynomial on each triangle (finite elements).
 Time: a fixed time step dt; every step solves one linear system  M * A3_new = b.
 
-How to run (see INSTALL.md):
+How to run, from the main course folder (see INSTALL.md there):
 
     conda activate fenicsx
-    python wave_current_dolfinx.py
+    python 01_radiating_wire/wave_current_dolfinx.py
 
-Output (in the folder "results/"):
+Output (in the folder "results/" next to this script):
     mesh.png                          -- picture of the mesh
     faces.pvd, wave.pvd, B_final.pvd  -- open with ParaView (simulation units;
                                          the script prints the conversion factors)
@@ -107,7 +107,7 @@ steps_per_frame = 20        # time steps between two snapshots; more = smaller d
 surface_plot     = True      # True: 3D surface A3(x, y), False: flat colour map
 plot_length_unit = "cm"      # unit of x and y in pictures and printed numbers
 plot_time_unit   = "ps"      # unit of t in pictures and printed numbers
-out_dir          = "results" # output folder
+out_dir          = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results") # output folder, next to this script
 # (A3 is always shown in gauss*cm and B in gauss.)
 
 # 1c. From physical units to simulation units

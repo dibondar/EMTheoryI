@@ -1,6 +1,6 @@
 # The PDE in weak form: a short introduction
 
-This note explains section 4 of `wave_current_dolfinx.py`: how a differential
+This note explains section 4 of `01_radiating_wire/wave_current_dolfinx.py`: how a differential
 equation is turned into something a computer can solve with the finite element
 method (FEM). Read it before or alongside the code.
 

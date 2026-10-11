@@ -31,18 +31,18 @@ and 2 GB of disk space.
 conda env create -f environment.yml
 ```
 
-This creates an environment named `fenicsx` with DOLFINx, Gmsh, numpy, matplotlib, pillow and pint.
+This creates an environment named `fenicsx` with DOLFINx, Gmsh, numpy, matplotlib, pillow, pint and scipy.
 
 **Option B (by hand).** The same, spelled out:
 
 ```bash
-conda create -n fenicsx -c conda-forge python=3.12 fenics-dolfinx=0.11 python-gmsh numpy matplotlib pillow pint
+conda create -n fenicsx -c conda-forge python=3.12 fenics-dolfinx=0.11 python-gmsh numpy matplotlib pillow pint scipy
 ```
 
 **Already have a `fenicsx` environment with a package missing?** Add it, for example:
 
 ```bash
-conda install -n fenicsx -c conda-forge python-gmsh matplotlib pillow pint
+conda install -n fenicsx -c conda-forge python-gmsh matplotlib pillow pint scipy
 ```
 
 ## 3. Activate and check
@@ -85,7 +85,7 @@ so that VS Code remembers your settings for it.
 
 ### 4.3 Select the environment (the important step)
 
-1. Open a `.py` file of the course, e.g. `wave_current_dolfinx.py`.
+1. Open a `.py` file of the course, e.g. `01_radiating_wire/wave_current_dolfinx.py`.
 2. Press `Ctrl+Shift+P` (macOS: `Cmd+Shift+P`) to open the Command Palette. The search box at the
    top now starts with `>`; without the `>` it searches file names, not commands.
 3. Type **Python: Select Interpreter** and press Enter. Newer versions of the Python extension
@@ -122,26 +122,26 @@ close them (trash-can icon) and open a new one.
 
 ## 5. Run an example
 
-**In VS Code:** open `wave_current_dolfinx.py` and click the ▷ ("Run Python File") button
+**In VS Code:** open `01_radiating_wire/wave_current_dolfinx.py` and click the ▷ ("Run Python File") button
 in the top-right corner of the editor. The output appears in the built-in terminal.
 
-**In a terminal** (inside VS Code or not), with the environment activated:
+**In a terminal** (inside VS Code or not), with the environment activated, from the course folder:
 
 ```bash
-python wave_current_dolfinx.py
+python 01_radiating_wire/wave_current_dolfinx.py
 ```
 
-Either way, it prints progress and writes everything to the folder `results/`:
+Either way, it prints progress and writes everything to the folder `01_radiating_wire/results/`, next to the script:
 
 | File | What it is | Open with |
 |---|---|---|
-| `results/wave.gif` | animation of the solution | any image viewer or browser |
-| `results/frames/frame_XXX.png` | the individual frames | any image viewer |
-| `results/wave.pvd` | the full time series of the solution | ParaView |
-| `results/faces.pvd` | the mesh with the two regions (vacuum / wire) | ParaView |
-| `results/B_final.pvd` | magnetic field at the final time | ParaView |
+| `01_radiating_wire/results/wave.gif` | animation of the solution | any image viewer or browser |
+| `01_radiating_wire/results/frames/frame_XXX.png` | the individual frames | any image viewer |
+| `01_radiating_wire/results/wave.pvd` | the full time series of the solution | ParaView |
+| `01_radiating_wire/results/faces.pvd` | the mesh with the two regions (vacuum / wire) | ParaView |
+| `01_radiating_wire/results/B_final.pvd` | magnetic field at the final time | ParaView |
 
-The second example, `wave_square_wire_dolfinx.py`, runs the same way and writes to `results_square/`.
+The square-wire version, `01_radiating_wire/wave_square_wire_dolfinx.py`, runs the same way and writes to `01_radiating_wire/results_square/`. Every example lives in its own numbered folder (see [README.md](README.md)) and writes its results next to its script.
 
 The default run takes about half a minute on a laptop, most of it for drawing the frames.
 The first run is a little slower because DOLFINx compiles some code and caches it; lines

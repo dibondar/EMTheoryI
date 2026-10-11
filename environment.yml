@@ -12,3 +12,4 @@ dependencies:
   - matplotlib          # plots and the animation
   - pillow              # assembles the GIF
   - pint                # physical units (mm, GHz, ampere, ...)
+  - scipy               # Bessel and Hankel functions (E-field problems)
